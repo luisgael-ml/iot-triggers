@@ -1,0 +1,509 @@
+{
+  "uid": "iot-triggers",
+  "title": "IoT Analytics Dashboard · Disparadores",
+  "tags": [
+    "nexodev",
+    "tarea9"
+  ],
+  "timezone": "browser",
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Alertas creadas por T2 (30 min)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "iot-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "iot-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) FROM alertas WHERE creada_en > NOW() - INTERVAL '30 minutes'"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Lecturas descartadas por T1 (30 min)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "iot-pg"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "iot-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) FROM auditoria WHERE operacion = 'RECHAZO' AND ocurrido_en > NOW() - INTERVAL '30 minutes'"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "purple"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Eventos publicados en RabbitMQ (30 min)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "iot-pg"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "iot-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) FROM eventos_salida WHERE publicado_en > NOW() - INTERVAL '30 minutes'"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Eventos pendientes en la bandeja",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "iot-pg"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "iot-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) FROM eventos_salida WHERE publicado_en IS NULL"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Alertas por minuto segun severidad (T2)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "iot-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "iot-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT date_trunc('minute', creada_en) AS time, severidad AS metric, COUNT(*) AS value\nFROM alertas WHERE $__timeFilter(creada_en)\nGROUP BY 1, 2 ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "critica"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "advertencia"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Estado en vivo de los sensores (T5, por sentencia)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "iot-pg"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "iot-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT s.codigo AS sensor, e.ultimo_valor AS \"ultimo valor\", s.unidad, e.total_lecturas AS lecturas,\n       to_char(e.ultima_lectura, 'HH24:MI:SS') AS \"ultima lectura\"\nFROM estado_sensor e JOIN sensores s ON s.id = e.sensor_id ORDER BY s.id"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Bitacora de auditoria (T1 y T6)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "iot-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "iot-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT to_char(ocurrido_en, 'HH24:MI:SS') AS hora, tabla, operacion, registro_id AS id,\n       COALESCE(cambios::text, detalle) AS \"cambio o motivo\", usuario\nFROM auditoria ORDER BY id DESC LIMIT 15"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "operacion"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "critica": {
+                        "color": "red",
+                        "index": 0
+                      },
+                      "alerta.critica": {
+                        "color": "red",
+                        "index": 1
+                      },
+                      "advertencia": {
+                        "color": "orange",
+                        "index": 2
+                      },
+                      "alerta.advertencia": {
+                        "color": "orange",
+                        "index": 3
+                      },
+                      "RECHAZO": {
+                        "color": "purple",
+                        "index": 4
+                      },
+                      "lectura.rechazada": {
+                        "color": "purple",
+                        "index": 5
+                      },
+                      "UPDATE": {
+                        "color": "blue",
+                        "index": 6
+                      },
+                      "INSERT": {
+                        "color": "green",
+                        "index": 7
+                      },
+                      "DELETE": {
+                        "color": "red",
+                        "index": 8
+                      },
+                      "dispositivo.mantenimiento": {
+                        "color": "blue",
+                        "index": 9
+                      },
+                      "dispositivo.inactivo": {
+                        "color": "gray",
+                        "index": 10
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Bandeja de salida hacia RabbitMQ (T3, T1 y T8 -> puente)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "iot-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "iot-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT id, to_char(creado_en, 'HH24:MI:SS') AS creado, routing_key,\n       COALESCE(payload->>'sensor', payload->>'dispositivo') AS origen,\n       COALESCE(payload->>'valor', payload->>'estado') AS valor,\n       to_char(publicado_en, 'HH24:MI:SS') AS publicado,\n       ROUND(EXTRACT(EPOCH FROM publicado_en - creado_en) * 1000) AS \"latencia ms\"\nFROM eventos_salida ORDER BY id DESC LIMIT 15"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "routing_key"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "critica": {
+                        "color": "red",
+                        "index": 0
+                      },
+                      "alerta.critica": {
+                        "color": "red",
+                        "index": 1
+                      },
+                      "advertencia": {
+                        "color": "orange",
+                        "index": 2
+                      },
+                      "alerta.advertencia": {
+                        "color": "orange",
+                        "index": 3
+                      },
+                      "RECHAZO": {
+                        "color": "purple",
+                        "index": 4
+                      },
+                      "lectura.rechazada": {
+                        "color": "purple",
+                        "index": 5
+                      },
+                      "UPDATE": {
+                        "color": "blue",
+                        "index": 6
+                      },
+                      "INSERT": {
+                        "color": "green",
+                        "index": 7
+                      },
+                      "DELETE": {
+                        "color": "red",
+                        "index": 8
+                      },
+                      "dispositivo.mantenimiento": {
+                        "color": "blue",
+                        "index": 9
+                      },
+                      "dispositivo.inactivo": {
+                        "color": "gray",
+                        "index": 10
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

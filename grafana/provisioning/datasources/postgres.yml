@@ -1,0 +1,16 @@
+# Grafana se conecta con grafana_lector: solo lectura
+apiVersion: 1
+datasources:
+  - name: IoT PostgreSQL (triggers)
+    uid: iot-pg
+    type: grafana-postgresql-datasource
+    url: datos:5432
+    user: grafana_lector
+    isDefault: true
+    jsonData:
+      database: iotanalytics
+      sslmode: require
+      postgresVersion: 1600
+      timescaledb: false
+    secureJsonData:
+      password: grafana123

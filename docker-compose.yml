@@ -1,0 +1,118 @@
+# Tarea 9 · Disparadores (triggers) · IoT Analytics Dashboard (NexoDev Solutions)
+name: iot-triggers
+
+services:
+  # ================= BASE DE DATOS (tablas + disparadores) =================
+  datos:
+    image: postgres:16
+    container_name: triggers-datos
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-admin123}
+      POSTGRES_DB: iotanalytics
+    command: >
+      -c ssl=on -c ssl_cert_file=/etc/ssl/certs/ssl-cert-snakeoil.pem
+      -c ssl_key_file=/etc/ssl/private/ssl-cert-snakeoil.key
+    volumes:
+      - ./datos/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks: [red-datos]          # sin puerto expuesto a la PC
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d iotanalytics"]
+      interval: 3s
+      retries: 30
+
+  # ================= MENSAJERIA EN TIEMPO REAL =================
+  mensajes:
+    image: rabbitmq:3.13-management
+    container_name: triggers-rabbitmq
+    hostname: triggers-rabbitmq      # nombre fijo del nodo
+    environment:
+      RABBITMQ_DEFAULT_USER: iot
+      RABBITMQ_DEFAULT_PASS: iot123
+      # La cookie de Erlang va como argumento: RabbitMQ ya no lee
+      # /var/lib/rabbitmq/.erlang.cookie, que falla con "eacces" en Docker Desktop
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-setcookie iottriggerscookie"
+    tmpfs:
+      - /var/lib/rabbitmq:mode=1777
+    ports:
+      - "15679:15672"              # consola de RabbitMQ: http://localhost:15679
+    networks: [red-mensajes]
+    healthcheck:
+      # Prueba que el puerto AMQP acepte conexiones (no usa la cookie)
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/5672'"]
+      interval: 5s
+      retries: 30
+
+  # ========= CONSUMIDOR: RabbitMQ -> INSERT en lecturas =========
+  consumidor:
+    build: ./servicios
+    container_name: triggers-consumidor
+    command: python -u consumidor.py
+    environment:
+      DB_HOST: datos
+      DB_USER: consumidor_iot        # solo puede insertar lecturas
+      DB_PASSWORD: consumidor123
+      RABBIT_URL: amqp://iot:iot123@mensajes:5672/
+    networks: [red-datos, red-mensajes]
+    depends_on:
+      datos: { condition: service_healthy }
+      mensajes: { condition: service_healthy }
+
+  # ================= SIMULADOR DE SENSORES =================
+  simulador:
+    build: ./servicios
+    container_name: triggers-simulador
+    command: python -u simulador.py
+    environment:
+      RABBIT_URL: amqp://iot:iot123@mensajes:5672/
+      INTERVALO: "1"
+    networks: [red-mensajes]       # no tiene acceso a la base de datos
+    depends_on:
+      consumidor: { condition: service_started }
+
+  # ========= PUENTE: eventos_salida (outbox) -> RabbitMQ =========
+  puente:
+    build: ./servicios
+    container_name: triggers-puente
+    command: python -u puente.py
+    environment:
+      DB_HOST: datos
+      DB_USER: puente_rmq            # solo lee y marca eventos_salida
+      DB_PASSWORD: puente123
+      RABBIT_URL: amqp://iot:iot123@mensajes:5672/
+    networks: [red-datos, red-mensajes]
+    depends_on:
+      datos: { condition: service_healthy }
+      mensajes: { condition: service_healthy }
+
+  # ========= NOTIFICADOR: suscriptor de las alertas =========
+  notificador:
+    build: ./servicios
+    container_name: triggers-notificador
+    command: python -u notificador.py
+    environment:
+      RABBIT_URL: amqp://iot:iot123@mensajes:5672/
+    networks: [red-mensajes]       # no tiene acceso a la base de datos
+    depends_on:
+      puente: { condition: service_started }
+
+  # ================= VISUALIZACION =================
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: triggers-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/iot-triggers.json
+    ports:
+      - "3009:3000"                # http://localhost:3009
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks: [red-datos]
+    depends_on:
+      datos: { condition: service_healthy }
+
+networks:
+  red-datos:
+  red-mensajes:
